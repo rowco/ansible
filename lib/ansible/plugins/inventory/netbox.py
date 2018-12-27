@@ -199,6 +199,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             "platforms": self.extract_platform,
             "device_types": self.extract_device_type,
             "config_context": self.extract_config_context,
+            "interfaces": self.extract_interfaces,
             "manufacturers": self.extract_manufacturer
         }
 
@@ -252,6 +253,29 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             url = urljoin(self.api_endpoint, "/api/dcim/devices/" + str(host["id"]))
             device_lookup = self._fetch_information(url)
             return [device_lookup["config_context"]]
+        except Exception:
+            return
+
+    def extract_interfaces(self, host):
+        try:
+            interfaces = {}
+            # Retreive the devices interfaces
+            url = urljoin(self.api_endpoint, "/api/dcim/interfaces/?device_id=" + str(host["id"]))
+            for interface in self._fetch_information(url)['results']:
+              # Remove self-reference
+              del(interface['device'])
+              interfaces[interface['name']] = interface
+            # Retreive the devices ip addresses
+            url = urljoin(self.api_endpoint, "/api/ipam/ip-addresses/?device_id=" + str(host["id"]))
+            for address in self._fetch_information(url)['results']:
+              interface = address['interface']['name']
+              # Remove self-reference
+              del(address['interface'])
+              if interfaces[interface].has_key('ip_addresses'):
+                interfaces[interface]['ip_addresses'].append(address)
+              else:
+                interfaces[interface]['ip_addresses'] = [address]
+            return [interfaces]
         except Exception:
             return
 
